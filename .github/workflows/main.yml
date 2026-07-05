@@ -1,0 +1,55 @@
+name: Build CFnat
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: windows
+            goarch: amd64
+          - goos: darwin
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Build Binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          mkdir -p dist
+          EXT=""
+          if [ "$GOOS" = "windows" ]; then
+            EXT=".exe"
+          fi
+          OUTPUT="cfnat-${GOOS}-${GOARCH}${EXT}"
+          go build \
+            -trimpath \
+            -ldflags="-s -w" \
+            -o "dist/${OUTPUT}" \
+            .
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cfnat-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
